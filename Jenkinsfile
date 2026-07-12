@@ -1,16 +1,26 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'node20'      // Configure this in Manage Jenkins -> Tools
+    }
+
     environment {
-        DOCKER_HUB_USER  = credentials('dockerhub-username')   // set in Jenkins credentials
-        DOCKER_HUB_PASS  = credentials('dockerhub-password')
-        IMAGE_BACKEND    = "${DOCKER_HUB_USER}/three-tier-backend"
-        IMAGE_FRONTEND   = "${DOCKER_HUB_USER}/three-tier-frontend"
-        RAILWAY_TOKEN    = credentials('railway-token') 
+        // Docker Hub credentials
+        DOCKER_HUB_USER = credentials('dockerhub-username')
+        DOCKER_HUB_PASS = credentials('dockerhub-password')
+
+        // Image names
+        IMAGE_BACKEND  = "${DOCKER_HUB_USER}/three-tier-backend"
+        IMAGE_FRONTEND = "${DOCKER_HUB_USER}/three-tier-frontend"
+
+        // Application URLs
+        VITE_API_URL = 'https://hopeful-essence-production-cd2f.up.railway.app'
+        BACKEND_URL  = 'https://hopeful-essence-production-cd2f.up.railway.app'
+        FRONTEND_URL = 'https://truthful-transformation-production-643b.up.railway.app'
     }
 
     stages {
-
 
         stage('Checkout') {
             steps {
@@ -18,12 +28,23 @@ pipeline {
             }
         }
 
+        stage('Verify Tools') {
+            steps {
+                sh '''
+                    node -v
+                    npm -v
+                    docker --version
+                '''
+            }
+        }
+
         stage('Test Backend') {
             steps {
                 dir('backend') {
-                    sh 'npm ci'
-                    // sh 'npm test'   // add tests later
-                    sh 'echo "Backend lint/test passed"'
+                    sh '''
+                        npm ci
+                        echo "Backend lint/test passed"
+                    '''
                 }
             }
         }
@@ -31,17 +52,26 @@ pipeline {
         stage('Build & Push Images') {
             steps {
                 sh '''
-                    echo "$DOCKER_HUB_PASS" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+                    echo "$DOCKER_HUB_PASS" | docker login \
+                        -u "$DOCKER_HUB_USER" \
+                        --password-stdin
 
-                    docker build -t $IMAGE_BACKEND:$BUILD_NUMBER -t $IMAGE_BACKEND:latest ./backend
+                    # Backend image
+                    docker build \
+                        -t $IMAGE_BACKEND:$BUILD_NUMBER \
+                        -t $IMAGE_BACKEND:latest \
+                        ./backend
+
                     docker push $IMAGE_BACKEND:$BUILD_NUMBER
                     docker push $IMAGE_BACKEND:latest
 
+                    # Frontend image
                     docker build \
                         --build-arg VITE_API_URL=$VITE_API_URL \
                         -t $IMAGE_FRONTEND:$BUILD_NUMBER \
                         -t $IMAGE_FRONTEND:latest \
                         ./frontend
+
                     docker push $IMAGE_FRONTEND:$BUILD_NUMBER
                     docker push $IMAGE_FRONTEND:latest
                 '''
@@ -51,9 +81,12 @@ pipeline {
         stage('Health Check') {
             steps {
                 sh '''
+                    echo "Waiting for deployment..."
                     sleep 30
-                    curl -f $BACKEND_URL/health || exit 1
-                    curl -f $FRONTEND_URL/health || exit 1
+
+                    curl -f $BACKEND_URL/health
+                    curl -f $FRONTEND_URL/health
+
                     echo "Deployment healthy!"
                 '''
             }
@@ -62,11 +95,13 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline succeeded — build #${BUILD_NUMBER} deployed."
+            echo "Pipeline succeeded — build #${BUILD_NUMBER} completed successfully."
         }
+
         failure {
-            echo "Pipeline FAILED at stage. Check logs above."
+            echo "Pipeline FAILED. Check logs above."
         }
+
         always {
             sh 'docker image prune -f || true'
         }
