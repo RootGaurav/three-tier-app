@@ -52,7 +52,8 @@ pipeline {
             steps {
                 sh '''
                     # Install Railway CLI if not present
-                    which railway || npm install -g @railway/cli
+                    sh 'railway login --token $RAILWAY_TOKEN'
+                    sh 'railway up'
 
                     # Trigger redeploy (Railway auto-pulls latest from Docker Hub)
                     railway up --service backend --detach
