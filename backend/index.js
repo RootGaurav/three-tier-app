@@ -42,7 +42,7 @@ app.post('/api/items', async (req, res) => {
 app.delete('/api/items/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM items WHERE id = $1', [req.params.id]);
-    res.json({ message: 'Deleted' });
+    res.json({ message: 'Deleted item' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

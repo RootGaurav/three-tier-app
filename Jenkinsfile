@@ -6,7 +6,7 @@ pipeline {
         DOCKER_HUB_PASS  = credentials('dockerhub-password')
         IMAGE_BACKEND    = "${DOCKER_HUB_USER}/three-tier-backend"
         IMAGE_FRONTEND   = "${DOCKER_HUB_USER}/three-tier-frontend"
-        RAILWAY_TOKEN    = credentials('railway-token')         // or render-api-key
+        RAILWAY_TOKEN    = credentials('railway-token') 
     }
 
     stages {
