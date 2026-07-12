@@ -48,21 +48,6 @@ pipeline {
             }
         }
 
-        stage('Deploy to Railway') {
-            steps {
-                sh '''
-                    # Install Railway CLI if not present
-                    sh 'railway login --token $RAILWAY_TOKEN'
-                    sh 'railway up'
-
-                    # Trigger redeploy (Railway auto-pulls latest from Docker Hub)
-                    railway up --service backend --detach
-                    railway up --service frontend --detach
-                '''
-                // Alternative: use Render deploy hooks (see README)
-            }
-        }
-
         stage('Health Check') {
             steps {
                 sh '''
